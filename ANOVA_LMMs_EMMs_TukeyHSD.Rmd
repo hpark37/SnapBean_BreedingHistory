@@ -1,0 +1,1283 @@
+---
+title: "ANOVA_LMMs_EMMs_TukeyHSD"
+author: "Hayley Park Richardson"
+date: "2024-10-29"
+output: html_document
+---
+
+```{r setup}
+library(wesanderson)
+library(pander)
+library(stargazer)
+library(ggplot2)
+library(ggsignif)
+library(cowplot)
+library(dplyr)
+library(lme4)
+library(nlme)
+library(influence.ME)
+library(emmeans)
+library(patchwork)
+
+BeanDataAll <- read.csv("~/Desktop/OrganicSnapBeans/Stats/Germ_2018_2020_2021_all.csv")
+
+BeanData_NoParents <- data.frame(BeanDataAll %>% filter(Popn!= "Parent"))
+BeanData_ParentsOnly <- data.frame(BeanDataAll %>% filter(Popn== "Parent"))
+
+Bean_NP_2018 <- data.frame(BeanData_NoParents %>% filter(Year== "2018"))
+Bean_NP_2020 <- data.frame(BeanData_NoParents %>% filter(Year== "2020"))
+Bean_NP_2021 <- data.frame(BeanData_NoParents %>% filter(Year== "2021"))
+
+Bean18_Conv <- data.frame(Bean_NP_2018 %>% filter(System== "Conv"))
+Bean18_Org <- data.frame(Bean_NP_2018 %>% filter(System== "Org"))
+Bean20_Conv <- data.frame(Bean_NP_2020 %>% filter(System== "Conv"))
+Bean20_Org <- data.frame(Bean_NP_2020 %>% filter(System== "Org"))
+Bean21_Conv <- data.frame(Bean_NP_2021 %>% filter(System== "Conv"))
+Bean21_Org <- data.frame(Bean_NP_2021 %>% filter(System== "Org"))
+
+Bean18_A <- data.frame(Bean18_Org %>% filter(Popn== "A"))
+Bean18_B <- data.frame(Bean18_Conv %>% filter(Popn== "B"))
+Bean18_C <- data.frame(Bean18_Org %>% filter(Popn== "C"))
+Bean18_D <- data.frame(Bean18_Conv %>% filter(Popn== "D"))
+Bean20_Conv_A <- data.frame(Bean20_Conv %>% filter(Popn== "A"))
+Bean20_Conv_B <- data.frame(Bean20_Conv %>% filter(Popn== "B"))
+Bean20_Conv_C <- data.frame(Bean20_Conv %>% filter(Popn== "C"))
+Bean20_Conv_D <- data.frame(Bean20_Conv %>% filter(Popn== "D"))
+Bean20_Org_A <- data.frame(Bean20_Org %>% filter(Popn== "A"))
+Bean20_Org_B <- data.frame(Bean20_Org %>% filter(Popn== "B"))
+Bean20_Org_C <- data.frame(Bean20_Org %>% filter(Popn== "C"))
+Bean20_Org_D <- data.frame(Bean20_Org %>% filter(Popn== "D"))
+Bean21_Conv_A <- data.frame(Bean21_Conv %>% filter(Popn== "A"))
+Bean21_Conv_B <- data.frame(Bean21_Conv %>% filter(Popn== "B"))
+Bean21_Conv_C <- data.frame(Bean21_Conv %>% filter(Popn== "C"))
+Bean21_Conv_D <- data.frame(Bean21_Conv %>% filter(Popn== "D"))
+Bean21_Org_A <- data.frame(Bean21_Org %>% filter(Popn== "A"))
+Bean21_Org_B <- data.frame(Bean21_Org %>% filter(Popn== "B"))
+Bean21_Org_C <- data.frame(Bean21_Org %>% filter(Popn== "C"))
+Bean21_Org_D <- data.frame(Bean21_Org %>% filter(Popn== "D"))
+
+# For Heritability
+Bean20_21 <- data.frame(BeanData_NoParents %>% filter(Year!= "2018"))
+Bean20_21_A <- data.frame(Bean20_21 %>% filter(Popn== "A"))
+Bean20_21_B <- data.frame(Bean20_21 %>% filter(Popn== "B"))
+Bean20_21_C <- data.frame(Bean20_21 %>% filter(Popn== "C"))
+Bean20_21_D <- data.frame(Bean20_21 %>% filter(Popn== "D"))
+
+Bean20_21_A_Org <- data.frame(Bean20_21_A %>% filter(System== "Org"))
+Bean20_21_A_Conv <- data.frame(Bean20_21_A %>% filter(System== "Conv"))
+Bean20_21_B_Org <- data.frame(Bean20_21_B %>% filter(System== "Org"))
+Bean20_21_B_Conv <- data.frame(Bean20_21_B %>% filter(System== "Conv"))
+Bean20_21_C_Org <- data.frame(Bean20_21_C %>% filter(System== "Org"))
+Bean20_21_C_Conv <- data.frame(Bean20_21_C %>% filter(System== "Conv"))
+Bean20_21_D_Org <- data.frame(Bean20_21_D %>% filter(System== "Org"))
+Bean20_21_D_Conv <- data.frame(Bean20_21_D %>% filter(System== "Conv"))
+
+```
+
+```{r Exploratory ANOVAs}
+summary.aov(aov(DTG~Breeding_hist, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(DTG~PdxnYear, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(DTG~System, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(DTG~Cross, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(DTG~Popn, data = BeanData_NoParents)) ### Significant ***
+
+summary.aov(aov(GermPercent~Breeding_hist, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(GermPercent~PdxnYear, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(GermPercent~System, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(GermPercent~Cross, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(GermPercent~Popn, data = BeanData_NoParents)) ### Significant ***
+
+summary.aov(aov(DT50.F~Breeding_hist, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(DT50.F~System, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(DT50.F~Cross, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(DT50.F~Popn, data = BeanData_NoParents)) ### Significant ***
+
+summary.aov(aov(X100_SW~Breeding_hist, data = BeanData_NoParents)) ### Not Significant
+summary.aov(aov(X100_SW~Cross, data = BeanData_NoParents)) ### Significant ***
+summary.aov(aov(X100_SW~Popn, data = BeanData_NoParents)) ### Significant ***
+```
+
+```{r ANOVAS for Mean Squares}
+datasets <- c("Bean_NP_2018", "Bean_NP_2020", "Bean_NP_2021")
+variable <- c("SeedWT_per_Plant_Grams",	"DTG", "GermPercent", "Vigor", "DT50.F", "Taproot_Diameter", "BR_1_Diameter", "BR_2_Diameter", "Branching_Density", "Disease_Rating")
+contrastvar <- c("Seed_Color", "Breeding_hist", "Cross", "System", "Breeding_hist:System")
+
+# Create empty dataframe
+results_df <- data.frame(dataset = character(),
+                         variable = character(),
+                         contrast = character(),
+                         Mean_Sq = numeric(),
+                         P_val = numeric (),
+                         DF = numeric(),
+                         stringsAsFactors = FALSE)
+
+for (dataset in datasets) {
+  data <- get(dataset)
+  for (var in variable) {
+    if (sum(!is.na(data[[var]])) > 0) {
+      for (contrast in contrastvar) {
+        if (grepl(":", contrast)) {
+          interaction_vars <- unlist(strsplit(contrast, ":"))
+          if (all(interaction_vars %in% colnames(data))) {
+            formula <- as.formula(paste(var, "~", contrast))
+          } else {
+            next
+          }
+        } else if (contrast %in% colnames(data)) {
+          formula <- as.formula(paste(var, "~", contrast))
+        } else {
+          next
+        }
+        anova_result <- aov(formula, data = data)
+        anova_summary <- summary(anova_result)
+        mean_sq <- anova_summary[[1]]["Mean Sq"][1]
+        p_val <- anova_summary[[1]]["Pr(>F)"][1]
+        df <- anova_summary[[1]]["Df"][1]
+        results_df <- rbind(results_df, data.frame(Dataset = dataset,
+                                                   Variable = var,
+                                                   Contrast = contrast,
+                                                   Mean_Sq = mean_sq,
+                                                   P_val = p_val,
+                                                   DF = df))
+      }
+    }
+  }
+}
+
+
+```
+
+```{r Linear Model & EMMs - Germination Percentage}
+
+hist(BeanData_NoParents$GermPercent, data = BeanData_NoParents)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(GermPercent ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents), 
+         # out = "glmGermPercent.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents)
+Lm2 <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+ Year +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(GermPercent ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv)
+emmlm2 <- lmer(GermPercent ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org)
+emmlm3 <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm6 <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emmlm7 <- lmer(GermPercent ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(GermPercent ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- lmer(GermPercent ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm10 <- lmer(GermPercent ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross"))
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross"))
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color"))
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color"))
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - 100SW}
+
+hist(BeanData_NoParents$X100_SW, data = BeanData_NoParents)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(X100_SW ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(X100_SW ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents), 
+         # out = "glmX100_SW.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(X100_SW ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents)
+Lm2 <- lmer(X100_SW ~ Breeding_hist + Cross +Seed_Color+ Year +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(X100_SW ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(X100_SW ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(X100_SW ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(X100_SW ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org) #NA
+emmlm5 <- lmer(X100_SW ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv) #NA
+emmlm6 <- lmer(X100_SW ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org) #NA
+emmlm7 <- lmer(X100_SW ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(X100_SW ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org) #NA
+emmlm9 <- lmer(X100_SW ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)#NA
+emmlm10 <- lmer(X100_SW ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)#NA
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist")) #NA
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist")) #NA
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist")) #NA
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color")) #NA
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))#NA
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))#NA
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - DTG}
+
+hist(BeanData_NoParents$DTG, data = BeanData_NoParents)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(DTG ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents), 
+         # out = "glmDTG.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents)
+Lm2 <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+ Year +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(DTG ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(DTG ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm6 <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emmlm7 <- lmer(DTG ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(DTG ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- lmer(DTG ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm10 <- lmer(DTG ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - Vigor}
+
+hist(BeanData_NoParents$Vigor, data = BeanData_NoParents)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(Vigor ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents), 
+         # out = "glmVigor.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|Year)+(1|System), data=BeanData_NoParents)
+Lm2 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+ Year +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(Vigor ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(Vigor ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm6 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emmlm7 <- lmer(Vigor ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(Vigor ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- lmer(Vigor ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm10 <- lmer(Vigor ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - Days to 50% Flowering}
+
+hist(BeanData_NoParents$DT50.F)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(DT50.F ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(DT50.F ~ Breeding_hist + Cross + Seed_Color + (1|Rep), data=BeanData_NoParents), 
+         # out = "glmDT50.F.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(DT50.F ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=BeanData_NoParents)
+Lm2 <- lmer(DT50.F ~ Breeding_hist + Cross+(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(DT50.F ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) 
+emmlm2 <- lmer(DT50.F ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) 
+emmlm3 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv) #NA
+emmlm4 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org) #NA
+emmlm5 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv) #NA
+emmlm6 <- lmer(Vigor ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)#NA
+emmlm7 <- lmer(Vigor ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)#NA
+emmlm8 <- lmer(Vigor ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)#NA
+emmlm9 <- lmer(Vigor ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)#NA
+emmlm10 <- lmer(Vigor ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)#NA
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) 
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) 
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))#NA
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))#NA
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))#NA
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))#NA
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color"))
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color"))
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))#NA
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))#NA
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))#NA
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))#NA
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - Seed Weight per Plant}
+
+hist(BeanData_NoParents$SeedWT_per_Plant_Grams)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(SeedWT_per_Plant_Grams ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(SeedWT_per_Plant_Grams ~ Breeding_hist + Cross + Seed_Color + (1|Rep), data=BeanData_NoParents), 
+         # out = "glmSeedWT_per_Plant_Grams.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(SeedWT_per_Plant_Grams ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=BeanData_NoParents)
+Lm2 <- lmer(SeedWT_per_Plant_Grams ~ Breeding_hist + Cross +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(SeedWT_per_Plant_Grams ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(SeedWT_per_Plant_Grams ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(SeedWT_per_Plant_Grams ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(SeedWT_per_Plant_Grams ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- lmer(SeedWT_per_Plant_Grams ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm6 <- lmer(SeedWT_per_Plant_Grams ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emmlm7 <- lmer(SeedWT_per_Plant_Grams ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(SeedWT_per_Plant_Grams ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- lmer(SeedWT_per_Plant_Grams ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm10 <- lmer(SeedWT_per_Plant_Grams ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - Taproot Diameter}
+
+hist(BeanData_NoParents$Taproot_Diameter)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(Taproot_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(Taproot_Diameter ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|System), data=BeanData_NoParents), 
+         # out = "glmTaproot_Diameter.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(Taproot_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=BeanData_NoParents)
+Lm2 <- lmer(Taproot_Diameter ~ Breeding_hist + Cross +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(Taproot_Diameter ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(Taproot_Diameter ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(Taproot_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(Taproot_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- lmer(Taproot_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm6 <- lmer(Taproot_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emmlm7 <- lmer(Taproot_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(Taproot_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- lmer(Taproot_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm10 <- lmer(Taproot_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - BR_1_Diameter}
+
+hist(BeanData_NoParents$BR_1_Diameter)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(BR_1_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(BR_1_Diameter ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|System), data=BeanData_NoParents), 
+         # out = "glmBR_1_Diameter.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(BR_1_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents)
+Lm2 <- lmer(BR_1_Diameter ~ Breeding_hist + Cross +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(BR_1_Diameter ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(BR_1_Diameter ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(BR_1_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(BR_1_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- lmer(BR_1_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm6 <- lmer(BR_1_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emmlm7 <- lmer(BR_1_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(BR_1_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- lmer(BR_1_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm10 <- lmer(BR_1_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - BR_2_Diameter}
+
+hist(BeanData_NoParents$BR_2_Diameter)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(BR_2_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(BR_2_Diameter ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|System), data=BeanData_NoParents), 
+         # out = "glmBR_2_Diameter.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(BR_2_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents)
+Lm2 <- lmer(BR_2_Diameter ~ Breeding_hist + Cross +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(BR_2_Diameter ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(BR_2_Diameter ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(BR_2_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(BR_2_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- lmer(BR_2_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm6 <- lmer(BR_2_Diameter ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emmlm7 <- lmer(BR_2_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(BR_2_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- lmer(BR_2_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm10 <- lmer(BR_2_Diameter ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - Branching_Density}
+
+hist(BeanData_NoParents$Branching_Density)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(lmer(Branching_Density ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents))
+pander(GermLM1$coefficients)
+
+stargazer(lmer(Branching_Density ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|System), data=BeanData_NoParents), 
+         # out = "glmBranching_Density.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- lmer(Branching_Density ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents)
+Lm2 <- lmer(Branching_Density ~ Breeding_hist + Cross +(1|Rep), data=BeanData_NoParents)
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm1)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(Branching_Density ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(Branching_Density ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(Branching_Density ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(Branching_Density ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- lmer(Branching_Density ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm6 <- lmer(Branching_Density ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emmlm7 <- lmer(Branching_Density ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(Branching_Density ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- lmer(Branching_Density ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv)
+emmlm10 <- lmer(Branching_Density ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org)
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+```{r Linear Model & EMMs - Disease_Rating}
+
+hist(BeanData_NoParents$Disease_Rating)
+
+BeanData_NoParents$Breeding_hist <- as.factor(BeanData_NoParents$Breeding_hist)
+BeanData_NoParents$Breeding_hist <- relevel(BeanData_NoParents$Breeding_hist, ref = "Conventional")
+
+GermLM1 = summary(glmer(Disease_Rating ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents, family= poisson(link = "log")))
+pander(GermLM1$coefficients)
+
+
+stargazer(glmer(Disease_Rating ~ Breeding_hist + Cross + Seed_Color + (1|Rep)+(1|System), data=BeanData_NoParents, family= poisson(link = "log")), 
+         # out = "glmDisease_Rating.htm",
+          type = "text"
+)
+
+## Compare models
+Lm1 <- glmer(Disease_Rating ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+(1|System), data=BeanData_NoParents, family= poisson(link = "log"))
+Lm2 <- glmer(Disease_Rating ~ Breeding_hist + Cross +(1|Rep), data=BeanData_NoParents, family= poisson(link = "log"))
+
+anova(Lm1, Lm2) #Significant difference ** at 0.01
+
+qqnorm(resid(Lm2)) # Not too screwy
+
+### Estimated Means
+# First, based on the model fit above, I need to fit a model for each of my 6 sub-datasets, with the random effects for year and field mgmt removed.
+
+emmlm1 <- lmer(Disease_Rating ~ Cross +Seed_Color+(1|Rep), data=Bean18_Conv) #NA
+emmlm2 <- lmer(Disease_Rating ~ Cross +Seed_Color+(1|Rep), data=Bean18_Org) #NA
+emmlm3 <- lmer(Disease_Rating ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm4 <- lmer(Disease_Rating ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm5 <- glmer(Disease_Rating ~ Breeding_hist + Cross +(1|Rep), data=Bean21_Conv, family= poisson(link = "log"))
+emmlm6 <- glmer(Disease_Rating ~ Breeding_hist + Cross +(1|Rep), data=Bean21_Org, family= poisson(link = "log"))
+emmlm7 <- lmer(Disease_Rating ~ Popn +Seed_Color+(1|Rep), data=Bean20_Conv)
+emmlm8 <- lmer(Disease_Rating ~ Popn +Seed_Color+(1|Rep), data=Bean20_Org)
+emmlm9 <- glmer(Disease_Rating ~ Popn +Seed_Color+(1|Rep), data=Bean21_Conv, family= poisson(link = "log"))
+emmlm10 <- glmer(Disease_Rating ~ Popn +Seed_Color+(1|Rep), data=Bean21_Org, family= poisson(link = "log"))
+
+emm2018Conv<- as.data.frame(emmeans(emmlm1, "Cross")) #NA
+emm2018Org<- as.data.frame(emmeans(emmlm2, "Cross")) #NA
+emm2020Conv<- as.data.frame(emmeans(emmlm3, "Cross", by = "Breeding_hist"))
+emm2020Org<- as.data.frame(emmeans(emmlm4, "Cross", by = "Breeding_hist"))
+emm2021Conv<- as.data.frame(emmeans(emmlm5, "Cross", by = "Breeding_hist"))
+emm2021Org<- as.data.frame(emmeans(emmlm6, "Cross", by = "Breeding_hist"))
+
+emm2018ConvSC<- as.data.frame(emmeans(emmlm1, "Cross", by = "Seed_Color")) #NA
+emm2018OrgSC<- as.data.frame(emmeans(emmlm2, "Cross", by = "Seed_Color")) #NA
+emm2020ConvSC <- as.data.frame(emmeans(emmlm7, "Popn", by = "Seed_Color"))
+emm2020OrgSC <- as.data.frame(emmeans(emmlm8, "Popn", by = "Seed_Color"))
+emm2021ConvSC <- as.data.frame(emmeans(emmlm9, "Popn", by = "Seed_Color"))
+emm2021OrgSC <- as.data.frame(emmeans(emmlm10, "Popn", by = "Seed_Color"))
+
+Germ_EMM_df <- data.frame(Cross = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Breeding_hist = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+Germ_EMM_df_Seed_Color <- data.frame(Seed_Color = character(),
+                         emmean = numeric(),
+                         SE = character(),
+                         df = numeric(),
+                         Cross = character(),
+                         Popn = character(),
+                         Source = character(),
+                         stringsAsFactors = FALSE)
+
+GermEMMs<- c("emm2018Conv", "emm2018Org", "emm2020Conv", "emm2020Org", "emm2021Conv", "emm2021Org")
+GermEMMsSeedCo <- c("emm2018ConvSC", "emm2018OrgSC", "emm2020ConvSC", "emm2020OrgSC", "emm2021ConvSC", "emm2021OrgSC")
+
+
+for (dataset in GermEMMs) {
+  current_df <- get(dataset)
+  if ("Breeding_hist" %in% colnames(current_df)) {
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  } else {
+    current_df$Breeding_hist <- NA
+    current_df <- current_df[, c("Cross", "emmean", "SE", "df", "Breeding_hist")]
+  }
+  current_df$Source <- dataset
+  Germ_EMM_df <- rbind(Germ_EMM_df, current_df)
+}
+
+for (dataset in GermEMMsSeedCo) {
+  current_df <- get(dataset)
+  if (!"Cross" %in% colnames(current_df)) {
+    current_df$Cross <- NA
+  }
+  if (!"Popn" %in% colnames(current_df)) {
+    current_df$Popn <- NA
+  }
+  current_df <- current_df[, c("Seed_Color", "emmean", "SE", "df", "Cross", "Popn")]
+  current_df$Source <- dataset
+  Germ_EMM_df_Seed_Color <- rbind(Germ_EMM_df_Seed_Color, current_df)
+}
+```
+
+``` {r PostHoc HSD Tests}
+
+##### Germination Traits #####
+df_all <- BeanData_NoParents %>% filter(!is.na(DTG))
+df_white <- df_all %>% filter(Seed_Color == "White")
+df_pigmented <- df_all %>% filter(Seed_Color == "Pigmented")
+
+# PostHoc HSD for All Families
+model_all <- (lmer(DTG ~ Breeding_hist+ Cross +Seed_Color+ (1|Year)+(1|Rep), data=df_all))
+emm_all <- emmeans(model_all,"Seed_Color", data=df_all)
+lmer_aov_all<- pairs(emm_all, adjust="tukey")
+p_all <- summary(lmer_aov_all)$p.value[1]
+
+# PostHoc HSD for White-Seeded Families
+model_white <- (lmer(DTG ~ Breeding_hist+ Cross + (1|Year)+(1|Rep), data=df_white))
+emm_white <- emmeans(model_white,"Breeding_hist", data=df_white)
+lmer_aov_white <- pairs(emm_white, adjust="tukey")
+p_white <- summary(lmer_aov_white)$p.value[1]
+
+# PostHoc HSD for Pigmented-Seeded Families
+model_pigmented <-(lmer(DTG ~ Breeding_hist+ Cross + (1|Year)+(1|Rep), data=df_pigmented))
+emm_pigmented <- emmeans(model_pigmented,"Breeding_hist", data=df_pigmented)
+lmer_aov_pigmented <- pairs(emm_pigmented, adjust="tukey")
+p_pigmented <- summary(lmer_aov_pigmented)$p.value[1]
+
+p_val_list <- c(p_all,p_white,p_pigmented)
+
+get_significance <- function(p_val_list) {
+significance_list <- c()
+  
+  for (p_value in p_val_list) {
+    if (p_value < 0.001) {
+      significance_list <- c(significance_list, "p<0.001")
+    } else if (p_value < 0.01) {
+      significance_list <- c(significance_list, "p<0.01")
+    } else if (p_value < 0.05) {
+      significance_list <- c(significance_list, "p<0.05")
+    } else {
+      significance_list <- c(significance_list, "ns")
+    }
+  }
+  
+  return(significance_list)
+}
+
+# Get significance levels for each plot
+sig_all <- get_significance(p_all)
+sig_white <- get_significance(p_white)
+sig_pigmented <- get_significance(p_pigmented)
+
+
+##### Root Traits #####
+
+```
+

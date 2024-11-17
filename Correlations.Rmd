@@ -1,0 +1,492 @@
+---
+title: "Multiple Correlations"
+author: "Hayley Park Richardson"
+date: "2024-10-29"
+output: html_document
+---
+
+```{r setup}
+library(wesanderson)
+library(pander)
+library(stargazer)
+library(ggplot2)
+library(ggsignif)
+library(cowplot)
+library(dplyr)
+library(lme4)
+library(nlme)
+library(influence.ME)
+library(emmeans)
+library(patchwork)
+
+BeanDataAll <- read.csv("~/Desktop/OrganicSnapBeans/Stats/Germ_2018_2020_2021_all.csv")
+
+BeanData_NoParents <- data.frame(BeanDataAll %>% filter(Popn!= "Parent"))
+BeanData_ParentsOnly <- data.frame(BeanDataAll %>% filter(Popn== "Parent"))
+
+Bean_NP_2018 <- data.frame(BeanData_NoParents %>% filter(Year== "2018"))
+Bean_NP_2020 <- data.frame(BeanData_NoParents %>% filter(Year== "2020"))
+Bean_NP_2021 <- data.frame(BeanData_NoParents %>% filter(Year== "2021"))
+
+Bean18_Conv <- data.frame(Bean_NP_2018 %>% filter(System== "Conv"))
+Bean18_Org <- data.frame(Bean_NP_2018 %>% filter(System== "Org"))
+Bean20_Conv <- data.frame(Bean_NP_2020 %>% filter(System== "Conv"))
+Bean20_Org <- data.frame(Bean_NP_2020 %>% filter(System== "Org"))
+Bean21_Conv <- data.frame(Bean_NP_2021 %>% filter(System== "Conv"))
+Bean21_Org <- data.frame(Bean_NP_2021 %>% filter(System== "Org"))
+
+Bean18_A <- data.frame(Bean18_Org %>% filter(Popn== "A"))
+Bean18_B <- data.frame(Bean18_Conv %>% filter(Popn== "B"))
+Bean18_C <- data.frame(Bean18_Org %>% filter(Popn== "C"))
+Bean18_D <- data.frame(Bean18_Conv %>% filter(Popn== "D"))
+Bean20_Conv_A <- data.frame(Bean20_Conv %>% filter(Popn== "A"))
+Bean20_Conv_B <- data.frame(Bean20_Conv %>% filter(Popn== "B"))
+Bean20_Conv_C <- data.frame(Bean20_Conv %>% filter(Popn== "C"))
+Bean20_Conv_D <- data.frame(Bean20_Conv %>% filter(Popn== "D"))
+Bean20_Org_A <- data.frame(Bean20_Org %>% filter(Popn== "A"))
+Bean20_Org_B <- data.frame(Bean20_Org %>% filter(Popn== "B"))
+Bean20_Org_C <- data.frame(Bean20_Org %>% filter(Popn== "C"))
+Bean20_Org_D <- data.frame(Bean20_Org %>% filter(Popn== "D"))
+Bean21_Conv_A <- data.frame(Bean21_Conv %>% filter(Popn== "A"))
+Bean21_Conv_B <- data.frame(Bean21_Conv %>% filter(Popn== "B"))
+Bean21_Conv_C <- data.frame(Bean21_Conv %>% filter(Popn== "C"))
+Bean21_Conv_D <- data.frame(Bean21_Conv %>% filter(Popn== "D"))
+Bean21_Org_A <- data.frame(Bean21_Org %>% filter(Popn== "A"))
+Bean21_Org_B <- data.frame(Bean21_Org %>% filter(Popn== "B"))
+Bean21_Org_C <- data.frame(Bean21_Org %>% filter(Popn== "C"))
+Bean21_Org_D <- data.frame(Bean21_Org %>% filter(Popn== "D"))
+
+# For Heritability
+Bean20_21 <- data.frame(BeanData_NoParents %>% filter(Year!= "2018"))
+Bean20_21_A <- data.frame(Bean20_21 %>% filter(Popn== "A"))
+Bean20_21_B <- data.frame(Bean20_21 %>% filter(Popn== "B"))
+Bean20_21_C <- data.frame(Bean20_21 %>% filter(Popn== "C"))
+Bean20_21_D <- data.frame(Bean20_21 %>% filter(Popn== "D"))
+
+Bean20_21_A_Org <- data.frame(Bean20_21_A %>% filter(System== "Org"))
+Bean20_21_A_Conv <- data.frame(Bean20_21_A %>% filter(System== "Conv"))
+Bean20_21_B_Org <- data.frame(Bean20_21_B %>% filter(System== "Org"))
+Bean20_21_B_Conv <- data.frame(Bean20_21_B %>% filter(System== "Conv"))
+Bean20_21_C_Org <- data.frame(Bean20_21_C %>% filter(System== "Org"))
+Bean20_21_C_Conv <- data.frame(Bean20_21_C %>% filter(System== "Conv"))
+Bean20_21_D_Org <- data.frame(Bean20_21_D %>% filter(System== "Org"))
+Bean20_21_D_Conv <- data.frame(Bean20_21_D %>% filter(System== "Conv"))
+
+```
+
+```{r Correlations}
+
+####### 2018 ########
+df <- data.frame(
+  ID = 1:2,
+  Seed_Color = c("White", "Pigmented")
+)
+dummy_df <- model.matrix(~ Seed_Color - 1, data = Bean_NP_2018)
+Bean_NP_2018 <-cbind(Bean_NP_2018,dummy_df)
+
+BeanCorrs <- data.frame(Bean_NP_2018 %>% filter(SeedWT_per_Plant_Grams!= "NA"))
+BeanCorrs <-BeanCorrs[c(14,16,19,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+bean_corr
+diag(bean_corr$P) <- 1
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+ 
+
+
+df <- data.frame(
+  ID = 1:2,
+  Seed_Color = c("White", "Pigmented")
+)
+dummy_df <- model.matrix(~ Seed_Color - 1, data = Bean18_Org)
+Bean18_Org <-cbind(Bean18_Org,dummy_df)
+
+BeanCorrs <- data.frame(Bean18_Org %>% filter(SeedWT_per_Plant_Grams!= "NA"))
+BeanCorrs <-BeanCorrs[c(14,16,19,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+df <- data.frame(
+  ID = 1:2,
+  Seed_Color = c("White", "Pigmented")
+)
+dummy_df <- model.matrix(~ Seed_Color - 1, data = Bean18_Conv)
+Bean18_Conv <-cbind(Bean18_Conv,dummy_df)
+
+BeanCorrs <- data.frame(Bean18_Conv %>% filter(SeedWT_per_Plant_Grams!= "NA"))
+BeanCorrs <-BeanCorrs[c(14,16,19,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+ 
+###### 2020 #######
+
+df <- data.frame(
+  ID = 1:2,
+  Seed_Color = c("White", "Pigmented")
+)
+dummy_df <- model.matrix(~ Seed_Color - 1, data = Bean_NP_2020)
+Bean_NP_2020 <-cbind(Bean_NP_2020,dummy_df)
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(X100_SW!= "NA"))
+BeanCorrs <-BeanCorrs[c(15,16,18,20,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(X100_SW!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18,20,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(X100_SW!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18,20,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+###### 2020 No SW ######
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <-BeanCorrs[c(15,16,18,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+###### 2021 #######
+
+df <- data.frame(
+  ID = 1:2,
+  Seed_Color = c("White", "Pigmented")
+)
+dummy_df <- model.matrix(~ Seed_Color - 1, data = Bean_NP_2021)
+Bean_NP_2021 <-cbind(Bean_NP_2021,dummy_df)
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(Taproot_Diameter!= "NA"))
+BeanCorrs <-BeanCorrs[c(15,16,18,21:26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(Taproot_Diameter!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18,21:26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(Taproot_Diameter!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18,21:26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <-BeanCorrs[c(15,16,18,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18,26)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+```
+
+``` {r Correlations with Seed Colors}
+####### 2018 ########
+
+BeanCorrs <- data.frame(Bean_NP_2018 %>% filter(SeedWT_per_Plant_Grams!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(14,16,19)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+bean_corr
+diag(bean_corr$P) <- 1
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2018 %>% filter(SeedWT_per_Plant_Grams!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(14,16,19)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+bean_corr
+diag(bean_corr$P) <- 1
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+BeanCorrs <- data.frame(Bean_NP_2018 %>% filter(SeedWT_per_Plant_Grams!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "1"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(14,16,19)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+bean_corr
+diag(bean_corr$P) <- 1
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2018 %>% filter(SeedWT_per_Plant_Grams!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "1"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(14,16,19)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+bean_corr
+diag(bean_corr$P) <- 1
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+####### 2020 ########
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "1"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "1"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+##### 2020 w/ 100 SW ######
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(X100_SW!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18,20)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(X100_SW!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18,20)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(X100_SW!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "1"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18,20)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(X100_SW!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "1"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18,20)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+####### 2021 ########
+
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "1"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "1"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Org"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+```
+
+``` {r Correlations for White Seeded Families Between Breeding Histories and System}
+
+###### 2020 ######
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Conv"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Conv"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Org"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2020 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Org"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+
+###### 2021 ######
+
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Conv"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Conv"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Conventional"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Org"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+BeanCorrs <- data.frame(Bean_NP_2021 %>% filter(GermPercent!= "NA"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Seed_ColorWhite!= "0"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(Breeding_hist== "Organic"))
+BeanCorrs <- data.frame(BeanCorrs %>% filter(System== "Org"))
+BeanCorrs <-BeanCorrs[c(15,16,18)]
+bean_corr <- rcorr(as.matrix(BeanCorrs), type = c("spearman"))
+diag(bean_corr$P) <- 1
+bean_corr
+corrplot(bean_corr$r, mar=c(0,0,5,0), method = "color", type="upper",col = COL2('BrBG', 100), order = "FPC",tl.col = "black", tl.srt = 45, p.mat = bean_corr$P, sig.level = c(0.001, 0.01, 0.05), insig = "label_sig") 
+
+```

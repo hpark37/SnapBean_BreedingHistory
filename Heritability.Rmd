@@ -1,0 +1,302 @@
+---
+title: "Heritability"
+author: "Hayley Park"
+date: "2024-10-29"
+output: html_document
+---
+
+```{r setup}
+library(dplyr)
+library(lme4)
+library(nlme)
+library(patchwork)
+
+BeanDataAll <- read.csv("~/Desktop/OrganicSnapBeans/Stats/Germ_2018_2020_2021_all.csv")
+
+BeanData_NoParents <- data.frame(BeanDataAll %>% filter(Popn!= "Parent"))
+BeanData_ParentsOnly <- data.frame(BeanDataAll %>% filter(Popn== "Parent"))
+
+Bean_NP_2018 <- data.frame(BeanData_NoParents %>% filter(Year== "2018"))
+Bean_NP_2020 <- data.frame(BeanData_NoParents %>% filter(Year== "2020"))
+Bean_NP_2021 <- data.frame(BeanData_NoParents %>% filter(Year== "2021"))
+
+Bean18_Conv <- data.frame(Bean_NP_2018 %>% filter(System== "Conv"))
+Bean18_Org <- data.frame(Bean_NP_2018 %>% filter(System== "Org"))
+Bean20_Conv <- data.frame(Bean_NP_2020 %>% filter(System== "Conv"))
+Bean20_Org <- data.frame(Bean_NP_2020 %>% filter(System== "Org"))
+Bean21_Conv <- data.frame(Bean_NP_2021 %>% filter(System== "Conv"))
+Bean21_Org <- data.frame(Bean_NP_2021 %>% filter(System== "Org"))
+
+Bean18_A <- data.frame(Bean18_Org %>% filter(Popn== "A"))
+Bean18_B <- data.frame(Bean18_Conv %>% filter(Popn== "B"))
+Bean18_C <- data.frame(Bean18_Org %>% filter(Popn== "C"))
+Bean18_D <- data.frame(Bean18_Conv %>% filter(Popn== "D"))
+Bean20_Conv_A <- data.frame(Bean20_Conv %>% filter(Popn== "A"))
+Bean20_Conv_B <- data.frame(Bean20_Conv %>% filter(Popn== "B"))
+Bean20_Conv_C <- data.frame(Bean20_Conv %>% filter(Popn== "C"))
+Bean20_Conv_D <- data.frame(Bean20_Conv %>% filter(Popn== "D"))
+Bean20_Org_A <- data.frame(Bean20_Org %>% filter(Popn== "A"))
+Bean20_Org_B <- data.frame(Bean20_Org %>% filter(Popn== "B"))
+Bean20_Org_C <- data.frame(Bean20_Org %>% filter(Popn== "C"))
+Bean20_Org_D <- data.frame(Bean20_Org %>% filter(Popn== "D"))
+Bean21_Conv_A <- data.frame(Bean21_Conv %>% filter(Popn== "A"))
+Bean21_Conv_B <- data.frame(Bean21_Conv %>% filter(Popn== "B"))
+Bean21_Conv_C <- data.frame(Bean21_Conv %>% filter(Popn== "C"))
+Bean21_Conv_D <- data.frame(Bean21_Conv %>% filter(Popn== "D"))
+Bean21_Org_A <- data.frame(Bean21_Org %>% filter(Popn== "A"))
+Bean21_Org_B <- data.frame(Bean21_Org %>% filter(Popn== "B"))
+Bean21_Org_C <- data.frame(Bean21_Org %>% filter(Popn== "C"))
+Bean21_Org_D <- data.frame(Bean21_Org %>% filter(Popn== "D"))
+
+# For Heritability
+Bean20_21 <- data.frame(BeanData_NoParents %>% filter(Year!= "2018"))
+Bean20_21_A <- data.frame(Bean20_21 %>% filter(Popn== "A"))
+Bean20_21_B <- data.frame(Bean20_21 %>% filter(Popn== "B"))
+Bean20_21_C <- data.frame(Bean20_21 %>% filter(Popn== "C"))
+Bean20_21_D <- data.frame(Bean20_21 %>% filter(Popn== "D"))
+
+Bean20_21_A_Org <- data.frame(Bean20_21_A %>% filter(System== "Org"))
+Bean20_21_A_Conv <- data.frame(Bean20_21_A %>% filter(System== "Conv"))
+Bean20_21_B_Org <- data.frame(Bean20_21_B %>% filter(System== "Org"))
+Bean20_21_B_Conv <- data.frame(Bean20_21_B %>% filter(System== "Conv"))
+Bean20_21_C_Org <- data.frame(Bean20_21_C %>% filter(System== "Org"))
+Bean20_21_C_Conv <- data.frame(Bean20_21_C %>% filter(System== "Conv"))
+Bean20_21_D_Org <- data.frame(Bean20_21_D %>% filter(System== "Org"))
+Bean20_21_D_Conv <- data.frame(Bean20_21_D %>% filter(System== "Conv"))
+
+```
+
+``` {r Heritability}
+singleyeartraits <- c("SeedWT_per_Plant_Grams", "X100_SW", "DT50.F", "Taproot_Diameter", "BR_1_Diameter", "BR_2_Diameter", "Branching_Density", "Disease_Rating")
+multiyeartraits <- c("GermPercent", "DTG", "Vigor")
+drops <- c("var1", "var2", "sdcor")
+
+allyearsandpdxn <- c("Bean20_21_A", "Bean20_21_B", "Bean20_21_C", "Bean20_21_D")
+allyearswithinpdxn <- c("Bean20_21_A_Org", "Bean20_21_A_Conv", "Bean20_21_B_Org", "Bean20_21_B_Conv", "Bean20_21_C_Org", "Bean20_21_C_Conv", "Bean20_21_D_Org", "Bean20_21_D_Conv")
+
+##### Narrow-Sense Heritability for Multi-Year, Multi-Environment Data (across years and production systems) ##### 
+
+# Make DataOutput and DataVarComp dataframes
+DataOutput <- data.frame()  
+DataVarComp <- data.frame()  
+DataVarCompOutput <- data.frame()
+
+colnum <- c(15, 16, 18)  # Trait columns
+
+for(dataset_name in allyearsandpdxn){
+  beandata1 <- get(dataset_name)  # Get the dataset 
+  unique_geno <- unique(beandata1[,8])  # Extract unique genotypes
+  
+  # Initialize a temporary DataOutput for this dataset
+  temp_output <- data.frame(matrix(vector(), length(unique_geno), 1, dimnames = list(c(), c("Geno"))))
+  temp_output$Geno <- unique_geno
+  temp_output$Row <- c(1:length(unique_geno))
+  
+  for(i in 1:length(colnum)){
+    x = colnum[i]
+    trait = colnames(beandata1)[x]  # Get the trait name
+    beandata1$y <- beandata1[, x]  # Rename column for analysis to 'y'
+    
+    # Run the linear mixed model for heritability estimation
+    herit_lmer <- lmer(y ~ (1| Geno) + (1|PdxnYear) + (1|Geno:PdxnYear), data=beandata1)
+    summary(herit_lmer)
+    
+    # Get variance components and BLUPs
+    varComp <- as.data.frame(VarCorr(herit_lmer, comp = "vcov"))
+    blup = coef(herit_lmer)$Geno
+    
+    # Name the BLUP column with the current trait and bind to temp_output
+    colnames(blup) <- trait
+    temp_output <- cbind(temp_output, blup)
+    
+    # Clean up varComp and store the trait
+    varComp <- varComp[,!(names(varComp) %in% drops)]
+    varComp$Trait <- trait
+    varComp$Dataset <- dataset_name  # Add dataset name for tracking
+    
+    # Accumulate results
+    DataVarComp <- rbind(DataVarComp, varComp)
+  }
+  
+  # After processing all traits for this dataset, accumulate the temporary output into the main DataOutput
+  DataOutput <- rbind(DataOutput, temp_output)
+}
+
+# Reshape the variance dataframe for heritability analysis
+DataVarCompOutput <- reshape(DataVarComp, idvar = c("Trait", "Dataset"), timevar = "grp", direction = "wide")
+
+# Experimental factors
+y <-2
+ps <-2
+reps <- 3
+
+# Variances
+geno.var <- (DataVarCompOutput[,4])
+g.enviro.var <- (DataVarCompOutput[,3])
+enviro.var <- (DataVarCompOutput[,5])
+residual.var <- (DataVarCompOutput[,6])
+
+# Heritability
+heritability<-data.frame(geno.var/(geno.var+(enviro.var/(reps*ps*y))+(g.enviro.var/(ps*y))))
+heritability<-cbind(heritability, multiyeartraits, (DataVarCompOutput[,2]))
+
+##### Narrow-Sense Heritability for Multi-Year, Multi-Environment Data (across years, within production systems) #####
+
+# Make DataOutput and DataVarComp dataframes
+DataOutput <- data.frame()  
+DataVarComp <- data.frame()  
+DataVarCompOutput <- data.frame()
+
+colnum <- c(15, 16, 18)  # Trait columns
+
+for(dataset_name in allyearswithinpdxn){
+  beandata1 <- get(dataset_name)  # Get the dataset 
+  unique_geno <- unique(beandata1[,8])  # Extract unique genotypes
+  
+  # Initialize a temporary DataOutput for this dataset
+  temp_output <- data.frame(matrix(vector(), length(unique_geno), 1, dimnames = list(c(), c("Geno"))))
+  temp_output$Geno <- unique_geno
+  temp_output$Row <- c(1:length(unique_geno))
+  
+  for(i in 1:length(colnum)){
+    x = colnum[i]
+    trait = colnames(beandata1)[x]  # Get the trait name
+    beandata1$y <- beandata1[, x]  # Rename column for analysis to 'y'
+    
+    # Run the linear mixed model for heritability estimation
+    herit_lmer <- lmer(y ~ (1| Geno) + (1|Year) + (1|Geno:Year), data=beandata1)
+    summary(herit_lmer)
+    
+    # Get variance components and BLUPs
+    varComp <- as.data.frame(VarCorr(herit_lmer, comp = "vcov"))
+    blup = coef(herit_lmer)$Geno
+    
+    # Name the BLUP column with the current trait and bind to temp_output
+    colnames(blup) <- trait
+    temp_output <- cbind(temp_output, blup)
+    
+    # Clean up varComp and store the trait
+    varComp <- varComp[,!(names(varComp) %in% drops)]
+    varComp$Trait <- trait
+    varComp$Dataset <- dataset_name  # Add dataset name for tracking
+    
+    # Accumulate results
+    DataVarComp <- rbind(DataVarComp, varComp)
+  }
+  
+  # After processing all traits for this dataset, accumulate the temporary output into the main DataOutput
+  DataOutput <- rbind(DataOutput, temp_output)
+}
+
+# Reshape the variance dataframe for heritability analysis
+DataVarCompOutput <- reshape(DataVarComp, idvar = c("Trait", "Dataset"), timevar = "grp", direction = "wide")
+
+# Experimental factors
+y <- 2
+reps <- 3
+
+# Variances
+geno.var <- (DataVarCompOutput[,4])
+g.enviro.var <- (DataVarCompOutput[,3])
+enviro.var <- (DataVarCompOutput[,5])
+residual.var <- (DataVarCompOutput[,6])
+
+#Heritability
+heritability<-data.frame(geno.var/(geno.var+(enviro.var/(reps*y))+(g.enviro.var/(y))))
+heritability<-cbind(heritability, multiyeartraits, (DataVarCompOutput[,2]))
+
+##### Narrow-Sense Heritability for Single-Year, Multi-Environment Data (across years, within production systems) #####
+
+# Remove single-rep individuals
+Bean18_A <- data.frame(Bean18_A %>% filter(Geno!= "A103"))
+Bean18_C <- data.frame(Bean18_C %>% filter(Geno!= "C116"))
+Bean18_C <- data.frame(Bean18_C %>% filter(Geno!= "C157"))
+Bean18_C <- data.frame(Bean18_C %>% filter(Geno!= "C19"))
+Bean18_C <- data.frame(Bean18_C %>% filter(Geno!= "C61"))
+Bean18_D <- data.frame(Bean18_D %>% filter(Geno!= "D63"))
+Bean18_B <- data.frame(Bean18_B %>% filter(Geno!= "B19"))
+Bean18_B <- data.frame(Bean18_B %>% filter(Geno!= "B45"))
+Bean20_Conv_A <- data.frame(Bean20_Conv_A %>% filter(Geno!= "C157"))
+Bean20_Conv_B <- data.frame(Bean20_Conv_B %>% filter(Geno!= "C157"))
+Bean20_Conv_C <- data.frame(Bean20_Conv_C %>% filter(Geno!= "C157"))
+Bean20_Conv_D <- data.frame(Bean20_Conv_D %>% filter(Geno!= "C157"))
+Bean21_Org_A <- data.frame(Bean21_Org_A %>% filter(Branching_Density!= "NA"))
+Bean21_Org_B <- data.frame(Bean21_Org_B %>% filter(Branching_Density!= "NA"))
+Bean21_Org_C <- data.frame(Bean21_Org_C %>% filter(Branching_Density!= "NA"))
+Bean21_Org_D <- data.frame(Bean21_Org_D %>% filter(Branching_Density!= "NA"))
+Bean21_Conv_A <- data.frame(Bean21_Conv_A %>% filter(Branching_Density!= "NA"))
+Bean21_Conv_B <- data.frame(Bean21_Conv_B %>% filter(Branching_Density!= "NA"))
+Bean21_Conv_C <- data.frame(Bean21_Conv_C %>% filter(Branching_Density!= "NA"))
+Bean21_Conv_D <- data.frame(Bean21_Conv_D %>% filter(Branching_Density!= "NA"))
+
+sy2018withinpdxn <- c("Bean18_A", "Bean18_B","Bean18_C", "Bean18_D")
+sy2020withinpdxn <- c("Bean20_Conv_A", "Bean20_Conv_B", "Bean20_Conv_C", "Bean20_Conv_D")
+sy2021withinpdxn <- c("Bean21_Org_A", "Bean21_Org_B", "Bean21_Org_C", "Bean21_Org_D", "Bean21_Conv_A", "Bean21_Conv_B", "Bean21_Conv_C", "Bean21_Conv_D")
+
+# Make DataOutput and DataVarComp dataframes
+DataOutput <- data.frame()  
+DataVarComp <- data.frame()  
+DataVarCompOutput <- data.frame()
+heritability <- data.frame()
+
+# Trait columns
+colnum18 <- c(14, 19)
+colnum20 <- c(20)
+colnum21 <- c(21:25)
+
+for(dataset_name in sy2021withinpdxn){
+  beandata1 <- get(dataset_name)  # Get the dataset 
+  unique_geno <- unique(beandata1[,8])  # Extract unique genotypes
+  
+  # Initialize a temporary DataOutput for this dataset
+  temp_output <- data.frame(matrix(vector(), length(unique_geno), 1, dimnames = list(c(), c("Geno"))))
+  temp_output$Geno <- unique_geno
+  temp_output$Row <- c(1:length(unique_geno))
+  
+  for(i in 1:length(colnum21)){
+    x = colnum21[i]
+    trait = colnames(beandata1)[x]  # Get the trait name
+    beandata1$y <- beandata1[, x]  # Rename column for analysis to 'y'
+    
+    # Run the linear mixed model for heritability estimation
+    herit_lmer <- lmer(y ~ (1| Geno), data=beandata1)
+    summary(herit_lmer)
+    
+    # Get variance components and BLUPs
+    varComp <- as.data.frame(VarCorr(herit_lmer, comp = "vcov"))
+    blup = coef(herit_lmer)$Geno
+    
+    # Name the BLUP column with the current trait and bind to temp_output
+    colnames(blup) <- trait
+    temp_output <- cbind(temp_output, blup)
+    
+    # Clean up varComp and store the trait
+    varComp <- varComp[,!(names(varComp) %in% drops)]
+    varComp$Trait <- trait
+    varComp$Dataset <- dataset_name  # Add dataset name for tracking
+    
+    # Accumulate results
+    DataVarComp <- rbind(DataVarComp, varComp)
+  }
+  
+  # After processing all traits for this dataset, accumulate the temporary output into the main DataOutput
+  DataOutput <- rbind(DataOutput, temp_output)
+}
+
+# Reshape the variance dataframe for heritability analysis
+DataVarCompOutput <- reshape(DataVarComp, idvar = c("Trait", "Dataset"), timevar = "grp", direction = "wide")
+
+# Experimental factors
+y <- 1
+reps <- 3
+
+# Variances
+geno.var <- (DataVarCompOutput[,3])
+enviro.var <- (DataVarCompOutput[,4])
+
+#Heritability
+heritability<-data.frame(geno.var/(geno.var+(enviro.var)))
+heritability<-cbind(heritability, (DataVarCompOutput[,1]), (DataVarCompOutput[,2]))
+
+
+```

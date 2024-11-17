@@ -1,0 +1,113 @@
+---
+title: "QTL_Mapping"
+author: "Hayley Park Richardson"
+date: "2024-10-29"
+output: html_document
+---
+```{r setup}
+library("qtl2")
+library("ggplot2")
+library("qtl2ggplot")
+library("wesanderson")
+
+# Load data and initial summary
+{popd_pheno <-read_cross2("~/Desktop/OrganicSnapBeans/Stats/PopD_QTLAnalysis/PopD_control.yaml")
+summary(popd_pheno)
+names(popd_pheno)}
+```
+
+``` {r Analysis} 
+# Create pseudomarkers to space genotyped markers at 1cM steps
+{map <- insert_pseudomarkers(map=popd_pheno$gmap, step=1)
+head(map, n=2)
+pr <- calc_genoprob(cross=popd_pheno, map=map, error_prob=0.002)
+plot_genoprob(pr, map, ind = 1, chr = "CHR02")
+
+# Haley-Knott Regression
+out <- scan1(genoprobs = pr, pheno = popd_pheno$pheno, cores=4)
+head(popd_pheno$pheno)
+plot_scan1(out, map = map, lodcolumn = "Seed_Color")
+
+#Perform a permutation test on same regression
+
+operm <- scan1perm(genoprobs = pr, pheno = popd_pheno$pheno, n_perm = 10000)
+thr <- summary(operm)
+hist(operm[,'Seed_Color'], breaks = 50, xlab = "LOD", 
+     main = "LOD scores for trait scan with threshold in red")
+abline(v = summary(operm)[,'Seed_Color'], col = 'red', lwd = 2)
+summary(operm,alpha=c(0.05, 0.01))
+
+# Shuffle phenotypes to explore maximum LOD score due to chance alone 
+## Most fell below LOD 1.5, on peak at LOD 2.0 and one just shy of 3.5 for Population C - germination data
+
+shuffled_order <- sample(rownames(popd_pheno$pheno))
+pheno_permuted <- popd_pheno$pheno
+rownames(pheno_permuted) <- shuffled_order
+out_permuted <- scan1(genoprobs = pr, pheno = pheno_permuted)
+plot(out_permuted, map)
+head(shuffled_order)
+
+# Finding LOD peaks
+
+lod_peaks<-find_peaks(scan1_output = out, map = map, threshold = thr, prob = 0.95, expand2markers = FALSE)
+lod_peaks
+
+# Calculate kinship matrix
+
+kinship <- calc_kinship(probs = pr)
+heatmap(kinship, symm = TRUE)}
+
+# Genome scan using LMM or LOCO (leave one chromosome out)
+
+{out_pg <- scan1(pr, popd_pheno$pheno, kinship=kinship)
+kinship_loco <- calc_kinship(pr, "loco")
+out_pg_loco <- scan1(pr, popd_pheno$pheno, kinship_loco)}
+
+# Plot LOD scores for all three methods
+{plot_scan1(out_pg_loco, map = map, lodcolumn = "Seed_Color", col = "black")
+plot_scan1(out_pg,      map = map, lodcolumn = "Seed_Color", col = "blue",  add = TRUE)
+plot_scan1(out,         map = map, lodcolumn = "Seed_Color", col = "green", add = TRUE)}
+
+
+# Estimate QTL effects
+{c2eff <- scan1coef(pr[,"CHR02"], popd_pheno$pheno[,"Seed_Color"])
+head(c2eff)
+plot_coef(c2eff, map, legend = "topright")
+plot_coef(c2eff, map, columns = 1:2, scan1_output = out, 
+          main = "Chromosome 8 QTL effects and LOD scores",
+          legend = "topright")}
+
+# Estimate additive effects
+{c2effB_pg <- scan1coef(pr[,"CHR02"], popd_pheno$pheno[,"Seed_Color"],contrasts=cbind(mu=c(1,1), a=c(-0.5,0.5)))
+plot_coef(c2effB_pg, map, columns = 2, scan1_output = out, 
+          main = "Chromosome ### Additive QTL effects",
+          legend = "topright")}
+
+#Phenotypic variance explained
+# grab phenotypes and covariates
+{pheno <- popd_pheno$pheno[,"Seed_Color"]
+
+# scan chromosome to find peak
+out_scan <- scan1(pr[,"CHR02"], pheno)
+
+# find peak position
+max_pos <- max(out_scan, map)
+
+# genoprobs at max position
+pr_max <- pull_genoprobpos(pr, map, max_pos$chr, max_pos$pos)
+
+# fit QTL model just at that position
+out_fit1 <- fit1(pr_max, pheno)
+
+# Variance explained from equation 1-10^(-2LOD/n)
+varexplained <-(1-(10^(-2*(out_fit1$lod/88))))
+
+lod<-(max_pos$pheno1)}
+varexplained
+
+lod
+
+
+var <-(1-(10^(-2*(3.298561/92))))
+var
+```

@@ -1,0 +1,888 @@
+---
+title: "Figure Generation"
+author: "Hayley Park Richardson"
+date: "2024-10-29"
+output: html_document
+---
+```{r setup}
+library(wesanderson)
+library(pander)
+library(stargazer)
+library(ggplot2)
+library(ggsignif)
+library(cowplot)
+library(dplyr)
+library(lme4)
+library(nlme)
+library(influence.ME)
+library(emmeans)
+library(patchwork)
+library(chromomap)
+
+BeanDataAll <- read.csv("~/Desktop/OrganicSnapBeans/Stats/Germ_2018_2020_2021_all.csv")
+
+BeanData_NoParents <- data.frame(BeanDataAll %>% filter(Popn!= "Parent"))
+BeanData_ParentsOnly <- data.frame(BeanDataAll %>% filter(Popn== "Parent"))
+
+Bean_NP_2018 <- data.frame(BeanData_NoParents %>% filter(Year== "2018"))
+Bean_NP_2020 <- data.frame(BeanData_NoParents %>% filter(Year== "2020"))
+Bean_NP_2021 <- data.frame(BeanData_NoParents %>% filter(Year== "2021"))
+
+Bean18_Conv <- data.frame(Bean_NP_2018 %>% filter(System== "Conv"))
+Bean18_Org <- data.frame(Bean_NP_2018 %>% filter(System== "Org"))
+Bean20_Conv <- data.frame(Bean_NP_2020 %>% filter(System== "Conv"))
+Bean20_Org <- data.frame(Bean_NP_2020 %>% filter(System== "Org"))
+Bean21_Conv <- data.frame(Bean_NP_2021 %>% filter(System== "Conv"))
+Bean21_Org <- data.frame(Bean_NP_2021 %>% filter(System== "Org"))
+
+Bean18_A <- data.frame(Bean18_Org %>% filter(Popn== "A"))
+Bean18_B <- data.frame(Bean18_Conv %>% filter(Popn== "B"))
+Bean18_C <- data.frame(Bean18_Org %>% filter(Popn== "C"))
+Bean18_D <- data.frame(Bean18_Conv %>% filter(Popn== "D"))
+Bean20_Conv_A <- data.frame(Bean20_Conv %>% filter(Popn== "A"))
+Bean20_Conv_B <- data.frame(Bean20_Conv %>% filter(Popn== "B"))
+Bean20_Conv_C <- data.frame(Bean20_Conv %>% filter(Popn== "C"))
+Bean20_Conv_D <- data.frame(Bean20_Conv %>% filter(Popn== "D"))
+Bean20_Org_A <- data.frame(Bean20_Org %>% filter(Popn== "A"))
+Bean20_Org_B <- data.frame(Bean20_Org %>% filter(Popn== "B"))
+Bean20_Org_C <- data.frame(Bean20_Org %>% filter(Popn== "C"))
+Bean20_Org_D <- data.frame(Bean20_Org %>% filter(Popn== "D"))
+Bean21_Conv_A <- data.frame(Bean21_Conv %>% filter(Popn== "A"))
+Bean21_Conv_B <- data.frame(Bean21_Conv %>% filter(Popn== "B"))
+Bean21_Conv_C <- data.frame(Bean21_Conv %>% filter(Popn== "C"))
+Bean21_Conv_D <- data.frame(Bean21_Conv %>% filter(Popn== "D"))
+Bean21_Org_A <- data.frame(Bean21_Org %>% filter(Popn== "A"))
+Bean21_Org_B <- data.frame(Bean21_Org %>% filter(Popn== "B"))
+Bean21_Org_C <- data.frame(Bean21_Org %>% filter(Popn== "C"))
+Bean21_Org_D <- data.frame(Bean21_Org %>% filter(Popn== "D"))
+
+# For Heritability
+Bean20_21 <- data.frame(BeanData_NoParents %>% filter(Year!= "2018"))
+Bean20_21_A <- data.frame(Bean20_21 %>% filter(Popn== "A"))
+Bean20_21_B <- data.frame(Bean20_21 %>% filter(Popn== "B"))
+Bean20_21_C <- data.frame(Bean20_21 %>% filter(Popn== "C"))
+Bean20_21_D <- data.frame(Bean20_21 %>% filter(Popn== "D"))
+
+Bean20_21_A_Org <- data.frame(Bean20_21_A %>% filter(System== "Org"))
+Bean20_21_A_Conv <- data.frame(Bean20_21_A %>% filter(System== "Conv"))
+Bean20_21_B_Org <- data.frame(Bean20_21_B %>% filter(System== "Org"))
+Bean20_21_B_Conv <- data.frame(Bean20_21_B %>% filter(System== "Conv"))
+Bean20_21_C_Org <- data.frame(Bean20_21_C %>% filter(System== "Org"))
+Bean20_21_C_Conv <- data.frame(Bean20_21_C %>% filter(System== "Conv"))
+Bean20_21_D_Org <- data.frame(Bean20_21_D %>% filter(System== "Org"))
+Bean20_21_D_Conv <- data.frame(Bean20_21_D %>% filter(System== "Conv"))
+
+```
+
+``` {r Boxplot Figure Generation - Germination}
+palette <- wes_palette("Cavalcanti1", n = 2)
+# Plot for all seed colors
+df_clean <- BeanData_NoParents %>% filter(!is.na(GermPercent))
+
+Germ_All <- ggplot(df_clean, aes(y = GermPercent, x = PdxnYear, color = Breeding_hist, fill = Breeding_hist)) +
+  geom_boxplot(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Year and Production System", 
+       y = "Germination Percentage", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+df_clean_white <- df_clean %>% filter(Seed_Color == "White")
+
+Germ_White <- ggplot(df_clean_white, aes(y = GermPercent, x = PdxnYear, color = Breeding_hist, fill = Breeding_hist)) +
+  geom_boxplot(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Year and Production System", 
+       y = "Germination Percentage", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+df_clean_color <- df_clean %>% filter(Seed_Color == "Pigmented")
+
+Germ_Pigmented <- ggplot(df_clean_color, aes(y = GermPercent, x = PdxnYear, color = Breeding_hist, fill = Breeding_hist)) +
+  geom_boxplot(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Year and Production System", 
+       y = "Germination Percentage", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+df_all <- BeanData_NoParents %>% filter(!is.na(GermPercent))
+df_white <- df_all %>% filter(Seed_Color == "White")
+df_pigmented <- df_all %>% filter(Seed_Color == "Pigmented")
+
+# ANOVA for All Families
+anova_all <- aov(GermPercent ~ Breeding_hist, data = df_all)
+summary_all <- summary(anova_all)
+p_all <- summary_all[[1]]["Pr(>F)"][1]
+
+# ANOVA for White-Seeded Families
+anova_white <- aov(GermPercent ~ Breeding_hist, data = df_white)
+summary_white <- summary(anova_white)
+p_white <- summary_white[[1]]["Pr(>F)"][1]
+
+# ANOVA for Pigmented-Seeded Families
+anova_pigmented <- aov(GermPercent ~ Breeding_hist, data = df_pigmented)
+summary_pigmented <- summary(anova_pigmented)
+p_pigmented <- summary_pigmented[[1]]["Pr(>F)"][1]
+
+get_significance <- function(p_value) {
+  if (p_value < 0.001) {
+    return("p<0.001")
+  } else if (p_value < 0.01) {
+    return("p<0.01")
+  } else if (p_value < 0.05) {
+    return("p<0.01")
+  } else {
+    return("ns")
+  }
+}
+
+# Get significance levels for each plot
+sig_all <- get_significance(p_all)
+sig_white <- get_significance(p_white)
+sig_pigmented <- get_significance(p_pigmented)
+
+
+combined_plot <- (Germ_All + 
+                   ggtitle("All Families") + 
+                   annotate("text", x = max(df_all$DTG) - 3, y = 0.045, 
+                            label = paste(sig_all))) +
+                 (Germ_White + 
+                   ggtitle("White-Seeded Families") + 
+                   annotate("text", x = max(df_white$DTG) - 2.5, y = 0.03, 
+                            label = paste(sig_white))) +
+                 (Germ_Pigmented + 
+                   ggtitle("Pigmented-Seeded Families") + 
+                   annotate("text", x = max(df_pigmented$DTG) - 3.25, y = 0.045, 
+                            label = paste(sig_pigmented))) +
+  plot_layout(ncol = 3, guides = "collect") +  
+  plot_annotation(title = "Total Germination Percentage", 
+                  subtitle = "Grouped by Breeding History and Seed Color") & 
+  theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 19),
+        plot.subtitle = element_text(hjust = 0.5))
+
+ggsave(plot = combined_plot, filename = "Germ_Boxplot_Figure.png" ,path = "~/Desktop/LMPaper_Frontiers/Stats", dpi = 320, width = 25, height = 7, units = "in")
+
+```
+
+```{r Boxplot Marginal Means - Germination}
+### Prepare sub-datasets
+Bean_NP_2018_white <- data.frame(Bean_NP_2018 %>% filter(Seed_Color == "White"))
+Bean_NP_2018_pigment <- data.frame(Bean_NP_2018 %>% filter(Seed_Color == "Pigmented"))
+
+Bean_NP_2020_O_white <- data.frame(Bean20_Org %>% filter(Seed_Color == "White"))
+Bean_NP_2020_O_pigment <- data.frame(Bean20_Org %>% filter(Seed_Color == "Pigmented"))
+
+Bean_NP_2020C_white <- data.frame(Bean20_Conv %>% filter(Seed_Color == "White"))
+Bean_NP_2020C_pigment <- data.frame(Bean20_Conv %>% filter(Seed_Color == "Pigmented"))
+
+Bean_NP_2021_O_white <- data.frame(Bean21_Org %>% filter(Seed_Color == "White"))
+Bean_NP_2021_O_pigment <- data.frame(Bean21_Org %>% filter(Seed_Color == "Pigmented"))
+
+Bean_NP_2021C_white <- data.frame(Bean21_Conv %>% filter(Seed_Color == "White"))
+Bean_NP_2021C_pigment <- data.frame(Bean21_Conv %>% filter(Seed_Color == "Pigmented"))
+
+### Germination Percent
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean_NP_2018)
+emms_all <- emmeans(GermP_boxplot_lmer,"Breeding_hist")
+lmer_aov <- pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross+(1|Rep), data=Bean_NP_2018_white)
+emms_white <- emmeans(GermP_boxplot_lmer,"Breeding_hist")
+lmer_aov <- pairs(emms_white, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2018_pigment)
+emms_pig <- emmeans(GermP_boxplot_lmer,"Breeding_hist")
+lmer_aov <- pairs(emms_pig, adjust="tukey")
+
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross + Seed_Color+(1|Rep), data=Bean20_Org)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2020_O_white)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2020_O_pigment)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2020C_white)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2020C_pigment)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2021_O_white)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2021_O_pigment)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2021C_white)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2021C_pigment)
+emms_all <-emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+
+
+### Days to Germ
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross + Seed_Color+(1|Rep), data=Bean20_Org)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2020_O_white)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2020_O_pigment)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean20_Conv)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2020C_white)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2020C_pigment)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Org)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2021_O_white)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2021_O_pigment)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +Seed_Color+(1|Rep), data=Bean21_Conv)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2021C_white)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep), data=Bean_NP_2021C_pigment)
+emms_all <- emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+## Across years and production systems
+BeanData_NoParents20_21  <- data.frame(BeanData_NoParents %>% filter(Year!= "2018"))
+BeanData_NoParents20_21  <- data.frame(BeanData_NoParents20_21 %>% filter(GermPercent!= "NA"))
+BeanData_NoParents20_21W  <- data.frame(BeanData_NoParents20_21 %>% filter(Seed_Color== "White"))
+BeanData_NoParents20_21P  <- data.frame(BeanData_NoParents20_21 %>% filter(Seed_Color=="Pigmented"))
+
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +Seed_Color+(1|Rep)+ (1|Year), data=BeanData_NoParents20_21)
+emms_all <- emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep)+ (1|Year), data=BeanData_NoParents20_21W)
+emms_all <- emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+GermP_boxplot_lmer <- lmer(GermPercent ~ Breeding_hist + Cross +(1|Rep)+ (1|Year), data=BeanData_NoParents20_21P)
+emms_all <- emmeans(GermP_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross + Seed_Color+(1|Rep)+ (1|Year), data=BeanData_NoParents20_21)
+emms_all <-  emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep)+ (1|Year), data=BeanData_NoParents20_21W)
+emms_all <-  emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+DTG_boxplot_lmer <- lmer(DTG ~ Breeding_hist + Cross +(1|Rep)+ (1|Year), data=BeanData_NoParents20_21P)
+emms_all <-  emmeans(DTG_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+```
+
+``` {r Density Plot Figure Generation - Germination}
+palette <- wes_palette("Cavalcanti1", n = 2)
+
+# EMMS for plots
+emmlm11 <- lmer(DTG ~ Breeding_hist+ Cross +Seed_Color+ (1|Year)+(1|Rep), data=df_all)
+emmall_DTG<- as.data.frame(emmeans(emmlm11, "Breeding_hist"))
+
+df_clean_white <- df_all %>% filter(Seed_Color == "White")
+emmlm11 <- lmer(DTG ~ Breeding_hist+ Cross + (1|Year)+(1|Rep), data=df_clean_white)
+emmwhite_DTG<- as.data.frame(emmeans(emmlm11, "Breeding_hist"))
+
+df_clean_pigmented <- df_all %>% filter(Seed_Color == "Pigmented")
+emmlm11 <- lmer(DTG ~ Breeding_hist+ Cross + (1|Year)+(1|Rep), data=df_clean_pigmented)
+emmcolor_DTG<- as.data.frame(emmeans(emmlm11, "Breeding_hist"))
+
+# Plot for all seed colors
+
+DTG_All <- ggplot(df_all, aes(x = DTG, color = Breeding_hist, fill = Breeding_hist)) +
+  geom_density(alpha=0.5) +
+  geom_vline(data = emmall_DTG, aes(xintercept = emmean, color = Breeding_hist),
+             linetype = "dashed", linewidth = 0.5) +    
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Days To Germination", 
+       y = "Density", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+# Plot for white seed 
+
+DTG_White <- ggplot(df_clean_white, aes(x = DTG, color = Breeding_hist, fill = Breeding_hist)) +
+  geom_density(alpha=0.5) +
+  geom_vline(data = emmwhite_DTG, aes(xintercept = emmean, color = Breeding_hist),
+             linetype = "dashed", linewidth = 0.5) +  
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Days To Germination", 
+       y = "Density", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+# Plot for pigmented seed 
+
+DTG_Color<- ggplot(df_clean_color, aes(x = DTG, color = Breeding_hist, fill = Breeding_hist)) +
+  geom_density(alpha=0.5) +
+  geom_vline(data = emmcolor_DTG, aes(xintercept = emmean, color = Breeding_hist),
+             linetype = "dashed", linewidth = 0.5) + 
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Days To Germination", 
+       y = "Density", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+
+combined_plot <- (DTG_All + 
+                   ggtitle("All Families") + 
+                   annotate("text", x = max(df_all$DTG) - 3, y = 0.045, 
+                            label = paste(sig_all))) +
+                 (DTG_White + 
+                   ggtitle("White-Seeded Families") + 
+                   annotate("text", x = max(df_white$DTG) - 2.5, y = 0.03, 
+                            label = paste(sig_white))) +
+                 (DTG_Color + 
+                   ggtitle("Pigmented-Seeded Families") + 
+                   annotate("text", x = max(df_pigmented$DTG) - 3.0, y = 0.045, 
+                            label = paste(sig_pigmented))) +
+  plot_layout(ncol = 3, guides = "collect") +  
+  plot_annotation(title = "Density Plots of Days to Germination", 
+                  subtitle = "Grouped by Breeding History and Seed Color") & 
+  theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 19),
+        plot.subtitle = element_text(hjust = 0.5))
+
+ggsave(plot = combined_plot, filename = "DTG_Density_Figure.png" ,path = "~/Desktop/LMPaper_Frontiers/Stats", dpi = 320, width = 15, height = 7, units = "in")
+
+```
+
+``` {r Boxplot Figure Generation - Root Disease}
+palette <- wes_palette("Cavalcanti1", n = 2)
+
+##### Seed Color Plots #####
+df_clean <- BeanData_NoParents %>% filter(!is.na(Disease_Rating))
+
+Disease_All <- ggplot(df_clean, aes(y = Disease_Rating, x = Breeding_hist, color = Breeding_hist, fill = Breeding_hist)) +
+  geom_violin(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Breeding History", 
+       y = "Root Disease Rating", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+df_clean_white <- df_clean %>% filter(Seed_Color == "White")
+
+Disease_White <- ggplot(df_clean_white, aes(y = Disease_Rating, x = Breeding_hist, color = Breeding_hist, fill = Breeding_hist)) +
+  geom_violin(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Breeding History", 
+       y = "Root Disease Rating", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+df_clean_color <- df_clean %>% filter(Seed_Color == "Pigmented")
+
+Disease_Pigmented <- ggplot(df_clean_color, aes(y = Disease_Rating, x = Breeding_hist, color = Breeding_hist, fill = Breeding_hist))+
+  geom_violin(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Breeding History", 
+       y = "Root Disease Rating", 
+       color = "Breeding History",
+       fill = "Breeding History") +
+  theme_cowplot()
+
+df_all <- BeanData_NoParents %>% filter(!is.na(Disease_Rating))
+df_white <- df_all %>% filter(Seed_Color == "White")
+df_pigmented <- df_all %>% filter(Seed_Color == "Pigmented")
+
+# ANOVA for All Families
+anova_all <- aov(Disease_Rating ~ Breeding_hist, data = df_all)
+summary_all <- summary(anova_all)
+p_all <- summary_all[[1]]["Pr(>F)"][1]
+
+# ANOVA for White-Seeded Families
+anova_white <- aov(Disease_Rating ~ Breeding_hist, data = df_white)
+summary_white <- summary(anova_white)
+p_white <- summary_white[[1]]["Pr(>F)"][1]
+
+# ANOVA for Pigmented-Seeded Families
+anova_pigmented <- aov(Disease_Rating ~ Breeding_hist, data = df_pigmented)
+summary_pigmented <- summary(anova_pigmented)
+p_pigmented <- summary_pigmented[[1]]["Pr(>F)"][1]
+
+get_significance <- function(p_value) {
+  if (p_value < 0.001) {
+    return("p<0.001")
+  } else if (p_value < 0.01) {
+    return("p<0.01")
+  } else if (p_value < 0.05) {
+    return("p<0.05")
+  } else {
+    return("ns")
+  }
+}
+
+# Get significance levels for each plot
+sig_all <- get_significance(p_all)
+sig_white <- get_significance(p_white)
+sig_pigmented <- get_significance(p_pigmented)
+
+
+combined_plot <- (Disease_All + 
+                   ggtitle("All Families") + 
+                   annotate("text", x = max(df_all$Disease_Rating)-5.5, y = 0.1, 
+                            label = paste(sig_all))) +
+                 (Disease_White + 
+                   ggtitle("White-Seeded Families") + 
+                   annotate("text", x = max(df_white$Disease_Rating)-5.5, y = 0.1, 
+                            label = paste(sig_white))) +
+                 (Disease_Pigmented + 
+                   ggtitle("Pigmented-Seeded Families") + 
+                   annotate("text", x = max(df_pigmented$Disease_Rating)-4.5, y = 0.1, 
+                            label = paste(sig_pigmented))) +
+  plot_layout(ncol = 3, guides = "collect") +  
+  plot_annotation(title = "Root Disease Rating", 
+                  subtitle = "Grouped by Breeding History and Seed Color") & 
+  theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 19),
+        plot.subtitle = element_text(hjust = 0.5, size = 15))
+
+ggsave(plot = combined_plot, filename = "Disease_Violin_Figure.png" ,path = "~/Desktop/LMPaper_Frontiers/Stats", dpi = 320, width = 15, height = 7, units = "in")
+
+##### Parentage Plots #####
+df_clean <- BeanData_NoParents %>% filter(!is.na(Disease_Rating))
+
+Disease_All <- ggplot(df_clean, aes(y = Disease_Rating, x = Cross, color = Cross, fill = Cross)) +
+  geom_violin(alpha=0.2)+
+  geom_jitter(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Cross", 
+       y = "Root Disease Rating", 
+       color = "Cross",
+       fill = "Cross") +
+  theme_cowplot()
+
+df_clean_conventional <- df_clean %>% filter(System == "Conv")
+
+Disease_Conv <- ggplot(df_clean_conventional, aes(y = Disease_Rating, x = Cross, color = Cross, fill = Cross))  +
+  geom_violin(alpha=0.2)+
+  geom_jitter(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Cross", 
+       y = "Root Disease Rating", 
+       color = "Cross",
+       fill = "Cross") +
+  theme_cowplot()
+
+df_clean_organic <- df_clean %>% filter(System == "Org")
+
+Disease_Org <- ggplot(df_clean_organic, aes(y = Disease_Rating, x = Cross, color = Cross, fill = Cross))  +
+  geom_violin(alpha=0.2)+
+  geom_jitter(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Cross", 
+       y = "Root Disease Rating", 
+       color = "Cross",
+       fill = "Cross") +
+  theme_cowplot()
+
+df_all <- BeanData_NoParents %>% filter(!is.na(Disease_Rating))
+df_conv <- df_all %>% filter(System == "Conv")
+df_org <- df_all %>% filter(System == "Org")
+
+# ANOVA for All Families
+anova_all <- aov(Disease_Rating ~ Cross, data = df_all)
+summary_all <- summary(anova_all)
+p_all <- summary_all[[1]]["Pr(>F)"][1]
+
+# ANOVA for White-Seeded Families
+anova_conv <- aov(Disease_Rating ~ Cross, data = df_conv)
+summary_conv <- summary(anova_conv)
+p_conv <- summary_conv[[1]]["Pr(>F)"][1]
+
+# ANOVA for Pigmented-Seeded Families
+anova_org <- aov(Disease_Rating ~ Cross, data = df_org)
+summary_org <- summary(anova_pigmented)
+p_org <- summary_org[[1]]["Pr(>F)"][1]
+
+get_significance <- function(p_value) {
+  if (p_value < 0.001) {
+    return("p<0.001")
+  } else if (p_value < 0.01) {
+    return("p<0.01")
+  } else if (p_value < 0.05) {
+    return("p<0.05")
+  } else {
+    return("ns")
+  }
+}
+
+# Get significance levels for each plot
+sig_all <- get_significance(p_all)
+sig_conv <- get_significance(p_conv)
+sig_org <- get_significance(p_org)
+
+
+combined_plot <- (Disease_All + 
+                   ggtitle("Systems Combined") + 
+                   annotate("text", x = max(df_all$Disease_Rating)-5.5, y = 0.1, 
+                            label = paste(sig_all))) +
+                 (Disease_Conv + 
+                   ggtitle("Conventional System") + 
+                   annotate("text", x = max(df_white$Disease_Rating)-5.5, y = 0.1, 
+                            label = paste(sig_conv))) +
+                 (Disease_Org + 
+                   ggtitle("Organic System") + 
+                   annotate("text", x = max(df_pigmented$Disease_Rating)-4.5, y = 0.1, 
+                            label = paste(sig_org))) +
+  plot_layout(ncol = 3, guides = "collect") +  
+  plot_annotation(title = "Root Disease Rating", 
+                  subtitle = "Grouped by Parentage and System") & 
+  theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 19),
+        plot.subtitle = element_text(hjust = 0.5, size = 15))
+
+ggsave(plot = combined_plot, filename = "Disease_Boxplot_Figure_Parentage.png" ,path = "~/Desktop/LMPaper_Frontiers/Stats", dpi = 320, width = 15, height = 7, units = "in")
+
+```
+
+``` {r Boxplot Figure Generation - Branching Density}
+palette <- wes_palette("Cavalcanti1", n = 2)
+df_clean <- BeanData_NoParents %>% filter(!is.na(Branching_Density))
+
+BD_All <- ggplot(df_clean, aes(y = Branching_Density, x = Cross, color = Cross, fill = Cross)) +
+  geom_boxplot(alpha=0.2)+
+  geom_jitter(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Cross", 
+       y = "Root Branching Density", 
+       color = "Cross",
+       fill = "Cross") +
+  theme_cowplot()
+
+df_clean_conventional <- df_clean %>% filter(System == "Conv")
+
+BD_Conv <- ggplot(df_clean_conventional, aes(y = Branching_Density, x = Cross, color = Cross, fill = Cross))  +
+  geom_boxplot(alpha=0.2)+
+  geom_jitter(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Cross", 
+       y = "Root Branching Density", 
+       color = "Cross",
+       fill = "Cross") +
+  theme_cowplot()
+
+df_clean_organic <- df_clean %>% filter(System == "Org")
+
+BD_Org <- ggplot(df_clean_organic, aes(y = Branching_Density, x = Cross, color = Cross, fill = Cross))  +
+  geom_boxplot(alpha=0.2)+
+  geom_jitter(alpha=0.5) +
+  scale_color_manual(values = palette) +
+  scale_fill_manual(values = palette) + 
+  labs(x = "Cross", 
+       y = "Root Branching Density", 
+       color = "Cross",
+       fill = "Cross") +
+  theme_cowplot()
+
+df_all <- BeanData_NoParents %>% filter(!is.na(Branching_Density))
+df_conv <- df_all %>% filter(System == "Conv")
+df_org <- df_all %>% filter(System == "Org")
+
+# ANOVA for All Families
+anova_all <- aov(Branching_Density ~ Cross, data = df_all)
+summary_all <- summary(anova_all)
+p_all <- summary_all[[1]]["Pr(>F)"][1]
+
+# ANOVA for White-Seeded Families
+anova_conv <- aov(Branching_Density ~ Cross, data = df_conv)
+summary_conv <- summary(anova_conv)
+p_conv <- summary_conv[[1]]["Pr(>F)"][1]
+
+# ANOVA for Pigmented-Seeded Families
+anova_org <- aov(Branching_Density ~ Cross, data = df_org)
+summary_org <- summary(anova_pigmented)
+p_org <- summary_org[[1]]["Pr(>F)"][1]
+
+get_significance <- function(p_value) {
+  if (p_value < 0.001) {
+    return("p<0.001")
+  } else if (p_value < 0.01) {
+    return("p<0.01")
+  } else if (p_value < 0.05) {
+    return("p<0.05")
+  } else {
+    return("ns")
+  }
+}
+
+# Get significance levels for each plot
+sig_all <- get_significance(p_all)
+sig_conv <- get_significance(p_conv)
+sig_org <- get_significance(p_org)
+
+
+combined_plot <- (BD_All + 
+                   ggtitle("Systems Combined") + 
+                   annotate("text", x = max(df_all$Branching_Density)-.5, y = 0.1, 
+                            label = paste(sig_all))) +
+                 (BD_Conv + 
+                   ggtitle("Conventional System") + 
+                   annotate("text", x = max(df_white$Branching_Density)-9.5, y = 0.1, 
+                            label = paste(sig_conv))) +
+                 (BD_Org + 
+                   ggtitle("Organic System") + 
+                   annotate("text", x = max(df_pigmented$Branching_Density)-8.5, y = 0.1, 
+                            label = paste(sig_org))) +
+  plot_layout(ncol = 3, guides = "collect") +  
+  plot_annotation(title = "Branching Density", 
+                  subtitle = "Grouped by Parentage and System") & 
+  theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 19),
+        plot.subtitle = element_text(hjust = 0.5, size = 15))
+
+ggsave(plot = combined_plot, filename = "BD_Boxplot_Figure_Parentage.png" ,path = "~/Desktop/LMPaper_Frontiers/Stats", dpi = 320, width = 15, height = 7, units = "in")
+
+
+```
+
+```{r Boxplot Marginal Means - Root Disease & Branching Density}
+### Prepare sub-datasets
+BeanData_NoParents2021EMMS <- data.frame(Bean_NP_2021 %>% filter(Disease_Rating!= "NA"))
+BeanData_NoParents2021EMMS_WS <- data.frame(BeanData_NoParents2021EMMS %>% filter(Seed_Color== "White"))
+BeanData_NoParents2021EMMS_PS <- data.frame(BeanData_NoParents2021EMMS %>% filter(Seed_Color== "Pigmented"))
+
+Bean21_OrgEMMS <- data.frame(Bean21_Org %>% filter(Disease_Rating!= "NA"))
+Bean21_OrgEMMS_WS <- data.frame(Bean21_OrgEMMS %>% filter(Seed_Color== "White"))
+Bean21_OrgEMMS_PS <- data.frame(Bean21_OrgEMMS %>% filter(Seed_Color== "Pigmented"))
+
+Bean21_ConvEMMs <- data.frame(Bean21_Conv %>% filter(Disease_Rating!= "NA"))
+Bean21_ConvEMMs_WS <- data.frame(Bean21_ConvEMMs %>% filter(Seed_Color== "White"))
+Bean21_ConvEMMs_PS <- data.frame(Bean21_ConvEMMs %>% filter(Seed_Color== "Pigmented"))
+
+##### Root Disease - Tukey HSD #####
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + Seed_Color + System + (1|Rep), data=BeanData_NoParents2021EMMS)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + System + (1|Rep), data=BeanData_NoParents2021EMMS_WS)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + System + (1|Rep), data=BeanData_NoParents2021EMMS_PS)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + Seed_Color +(1|Rep), data=Bean21_OrgEMMS)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + (1|Rep), data=Bean21_OrgEMMS_WS)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + (1|Rep), data=Bean21_OrgEMMS_PS)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + Seed_Color + (1|Rep), data=Bean21_ConvEMMs)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + (1|Rep), data=Bean21_ConvEMMs_WS)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + (1|Rep), data=Bean21_ConvEMMs_PS)
+emms_all <-emmeans(RD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+# Cross Contrast
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + Seed_Color + System + (1|Rep), data=BeanData_NoParents2021EMMS)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + System + (1|Rep), data=BeanData_NoParents2021EMMS_WS)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + System + (1|Rep), data=BeanData_NoParents2021EMMS_PS)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + Seed_Color +(1|Rep), data=Bean21_OrgEMMS)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + (1|Rep), data=Bean21_OrgEMMS_WS)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + (1|Rep), data=Bean21_OrgEMMS_PS)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + Seed_Color + (1|Rep), data=Bean21_ConvEMMs)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + (1|Rep), data=Bean21_ConvEMMs_WS)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+RD_boxplot_lmer <- lmer(Disease_Rating ~ Breeding_hist + Cross + (1|Rep), data=Bean21_ConvEMMs_PS)
+emms_all <-emmeans(RD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+
+### Branching Density - Tukey HSD
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + Seed_Color + System + (1|Rep), data=BeanData_NoParents2021EMMS)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + System + (1|Rep), data=BeanData_NoParents2021EMMS_WS)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + System + (1|Rep), data=BeanData_NoParents2021EMMS_PS)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + Seed_Color +(1|Rep), data=Bean21_OrgEMMS)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + (1|Rep), data=Bean21_OrgEMMS_WS)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + (1|Rep), data=Bean21_OrgEMMS_PS)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + Seed_Color + (1|Rep), data=Bean21_ConvEMMs)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + (1|Rep), data=Bean21_ConvEMMs_WS)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + (1|Rep), data=Bean21_ConvEMMs_PS)
+emms_all <-emmeans(BD_boxplot_lmer,"Breeding_hist")
+pairs(emms_all, adjust="tukey")
+
+# Cross Contrast
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + Seed_Color + System + (1|Rep), data=BeanData_NoParents2021EMMS)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + System + (1|Rep), data=BeanData_NoParents2021EMMS_WS)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + System + (1|Rep), data=BeanData_NoParents2021EMMS_PS)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + Seed_Color +(1|Rep), data=Bean21_OrgEMMS)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + (1|Rep), data=Bean21_OrgEMMS_WS)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + (1|Rep), data=Bean21_OrgEMMS_PS)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + Seed_Color + (1|Rep), data=Bean21_ConvEMMs)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + (1|Rep), data=Bean21_ConvEMMs_WS)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+
+BD_boxplot_lmer <- lmer(Branching_Density ~ Breeding_hist + Cross + (1|Rep), data=Bean21_ConvEMMs_PS)
+emms_all <-emmeans(BD_boxplot_lmer,"Cross")
+pairs(emms_all, adjust="tukey")
+```
+
+```{r Chromomaps for Segregation Distortion}
+library(chromoMap)
+chromoMap("chromo.txt","ORBV_SD_allsnps_2.txt", data_based_color_map = T,
+          data_type = "categorical", hlinks=F,
+          data_colors = list(c("yellow", "red", "blue" )), legend=T, 
+          lg_x = 200,
+          lg_y = 50 , title="Segregation Distortion in ORBV Populations")
+
+chromoMap("chromo.txt","HYPR_SD_allsnps_2.txt", data_based_color_map = T,
+          data_type = "categorical", hlinks=F,
+          data_colors = list(c( "yellow",  "red", "blue")), legend=T, 
+          lg_x = 200,
+          lg_y = 50 , title="Segregation Distortion in HYPR Populations")
+```
